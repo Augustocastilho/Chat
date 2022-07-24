@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ChatJS</title>
+	<link rel="stylesheet" type="text/css" href="/css/style.css" />
+</head>
+<body>
+	<!-- Div com o formulário de acesso, para inserir o nome -->
+	<div id="box">
+		<div id='userAcess'>
+			<form id='login'>
+				<input type='text' placeholder='Insira seu nome' name='name' id='name' />
+				<input type='submit' value='Login' />
+			</form>
+		</div>
+		<!-- Div principal onde fica o painel de mensagens e lista de usuários -->
+		<div id='chatRoom'>
+			<div id="messagesHistory"></div>
+			<select multiple="multiple" id='usersList'><option value=''>Todos</option></select>
+			<form id='chat'>
+				<input type='text' id='textMessage' name='textMessage' />
+				<input type='submit' value='Send Message!' />	
+			</form>
+		</div>
+	</div>
+
+
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">	
+		var socket = io.connect();
+
+		// Ao enviar uma mensagem
+		$("form#chat").submit(function(e){
+			e.preventDefault();
+
+			var message = $(this).find("#textMessage").val();
+			var user = $("#usersList").val(); // Usuário selecionado na lista lateral direita
+
+			// Evento acionado no servidor para o envio da mensagem
+			// junto com o nome do usuário selecionado da lista
+			socket.emit("send message", {msg: message, usu: user}, function(){
+				$("form#chat #textMessage").val("");
+			});
+		});
+
+		// Resposta ao envio de mensagens do servidor
+		socket.on("update messages", function(datas){
+			var formattedMessage = $("<p />").text(datas.msg).addClass(datas.type);
+			$("#messagesHistory").append(formattedMessage);
+		});
+
+		$("form#login").submit(function(e){
+			e.preventDefault();
+
+			// Evento enviado quando o usuário insere um nome
+			socket.emit("login", $(this).find("#name").val(), function(valid){
+				if(valid){
+					// Caso não exista nenhum usuário com o mesmo nome, o painel principal é exibido
+					$("#userAcess").hide();
+					$("#chatRoom").show();
+				}else{
+					// Do contrário o campo de mensagens é limpo e é apresentado um alert
+					$("#userAcess").val("");
+					alert("Nome já utilizado nesta sala");
+				}
+			});
+		});
+
+		// Quando servidor enviar uma nova lista de usuários
+		// o select é limpo e reinserida a opção Todos
+		// junto de toda a lista de usuários.
+		socket.on("update users", function(users){
+			$("#usersList").empty();
+			$("#usersList").append("<option value=''>Todos</option>");
+				$.each(users, function(index){
+					var userOption = $("<option />").text(users[index]);
+					$("#usersList").append(userOption);
+			});
+		});
+
+	</script>
+
+</body>
+</html> 
